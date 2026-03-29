@@ -1,244 +1,353 @@
 import sys
+import os
 
-def print_result(ref_string, frames_snapshots, faults, total_requests):
-    print(f"\nTotal Requests: {total_requests}")
-    print(f"Page Faults (Interrupts): {faults}")
-    print(f"Page Hits: {total_requests - faults}")
-    print(f"Failure Rate: {(faults / total_requests * 100):.2f}%")
-    print(f"Success Rate: {((total_requests - faults) / total_requests * 100):.2f}%\n")
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def print_textbook_table(ref_string, snapshots, num_frames):
+    print(f"\n{Colors.BOLD}{Colors.BLUE}--- Textbook Manual Calculation Grid ---{Colors.ENDC}\n")
     
-    # Print tracing table
-    print("Step | Request | Memory Frames (State) | Status")
-    print("-" * 55)
+    # Process reference row
+    ref_row = f"{Colors.WARNING}Ref String: {Colors.ENDC}"
+    for req in ref_string:
+        ref_row += f"{req:3} "
+    print(ref_row)
+    print("─" * (12 + 4 * len(ref_string)))
+    
+    # Process each frame row (physical slots in memory)
+    for f in range(num_frames):
+        row_str = f"{Colors.BOLD}Frame {f+1}:{Colors.ENDC}    "
+        for i in range(len(ref_string)):
+            state = snapshots[i]['state']
+            page = state[f]
+            if page is not None:
+                row_str += f"{page:3} "
+            else:
+                row_str += "    "
+        print(row_str)
+        
+    print("─" * (12 + 4 * len(ref_string)))
+    
+    # Process faults row
+    fault_row = f"{Colors.FAIL}Faults:{Colors.ENDC}     "
+    for i in range(len(ref_string)):
+        if snapshots[i]['status'] == "Fault":
+            fault_row += f"{Colors.FAIL}  *{Colors.ENDC} "
+        else:
+            fault_row += "    "
+    print(fault_row)
+    print()
+
+def print_result(algo_name, ref_string, frames_snapshots, faults, total_requests, num_frames):
+    hits = total_requests - faults
+    print(f"\n{Colors.BOLD}{Colors.BLUE}╔════════════════════════════════════════════════════════╗{Colors.ENDC}")
+    print(f"{Colors.BOLD}{Colors.BLUE}║                 {algo_name:^38} ║{Colors.ENDC}")
+    print(f"{Colors.BOLD}{Colors.BLUE}╚════════════════════════════════════════════════════════╝{Colors.ENDC}\n")
+    
+    print(f" {Colors.BOLD}Total Requests:{Colors.ENDC} {total_requests}")
+    print(f" {Colors.BOLD}Page Faults:{Colors.ENDC}    {Colors.FAIL}{faults}{Colors.ENDC}")
+    print(f" {Colors.BOLD}Page Hits:{Colors.ENDC}      {Colors.GREEN}{hits}{Colors.ENDC}")
+    print(f" {Colors.BOLD}Failure Rate:{Colors.ENDC}   {Colors.WARNING}{(faults / total_requests * 100):.2f}%{Colors.ENDC}")
+    print(f" {Colors.BOLD}Success Rate:{Colors.ENDC}   {Colors.GREEN}{(hits / total_requests * 100):.2f}%{Colors.ENDC}\n")
+    
+    # Dynamically calculate the maximum width for the "Memory Frames (State)" column
+    max_state_len = 21 # Length of the header "Memory Frames (State)"
+    for snapshot in frames_snapshots:
+        state_str = "[" + ", ".join(str(x) if x is not None else " " for x in snapshot['state']) + "]"
+        if len(state_str) > max_state_len:
+            max_state_len = len(state_str)
+            
+    header_padding = " " * (max_state_len - 21)
+    line_padding = "─" * max_state_len
+    
+    # Table Header
+    print(f"{Colors.BOLD}┌──────┬─────────┬─{line_padding}─┬────────┐{Colors.ENDC}")
+    print(f"{Colors.BOLD}│ Step │ Request │ Memory Frames (State){header_padding} │ Status │{Colors.ENDC}")
+    print(f"{Colors.BOLD}├──────┼─────────┼─{line_padding}─┼────────┤{Colors.ENDC}")
+    
     for i in range(total_requests):
         req = ref_string[i]
         state = frames_snapshots[i]['state']
         status = frames_snapshots[i]['status']
-        # Format the state array to standard length for clean column view
+        
+        status_color = Colors.FAIL if status == "Fault" else Colors.GREEN
+        status_str = f"{status_color}{status:5}{Colors.ENDC}"
+        
         state_str = "[" + ", ".join(str(x) if x is not None else " " for x in state) + "]"
-        print(f"{i+1:4} | {req:7} | {state_str:21} | {status}")
-    print("-" * 55)
+        print(f"│ {i+1:4} │ {req:7} │ {state_str:<{max_state_len}} │ {status_str}  │")
+        
+    print(f"{Colors.BOLD}└──────┴─────────┴─{line_padding}─┴────────┘{Colors.ENDC}\n")
+    
+    choice = input(f"{Colors.WARNING}Would you like to view the textbook manual calculation grid? (y/n): {Colors.ENDC}")
+    if choice.lower() == 'y':
+        print_textbook_table(ref_string, frames_snapshots, num_frames)
+        
+    input(f"{Colors.WARNING}Press [Enter] to return to the menu...{Colors.ENDC}")
 
 def simulate_fifo(ref_string, num_frames):
-    frames = []
-    faults = 0
-    snapshots = []
-    
-    for req in ref_string:
-        status = ""
-        if req in frames:
-            status = "Hit"
-        else:
-            status = "Fault"
-            faults += 1
-            if len(frames) < num_frames:
-                frames.append(req)
-            else:
-                frames.pop(0)
-                frames.append(req)
-        
-        # Capture state for table
-        state = frames + [None] * (num_frames - len(frames))
-        snapshots.append({'state': state, 'status': status})
-        
-    print_result(ref_string, snapshots, faults, len(ref_string))
-
-
-def simulate_lru(ref_string, num_frames):
-    frames = []
-    faults = 0
-    snapshots = []
-    
-    for req in ref_string:
-        status = ""
-        if req in frames:
-            status = "Hit"
-            frames.remove(req)
-            frames.append(req)
-        else:
-            status = "Fault"
-            faults += 1
-            if len(frames) < num_frames:
-                frames.append(req)
-            else:
-                frames.pop(0)
-                frames.append(req)
-                
-        state = frames + [None] * (num_frames - len(frames))
-        snapshots.append({'state': state, 'status': status})
-        
-    print_result(ref_string, snapshots, faults, len(ref_string))
-
-
-def simulate_mru(ref_string, num_frames):
-    frames = []
-    faults = 0
-    snapshots = []
-    
-    for req in ref_string:
-        status = ""
-        if req in frames:
-            status = "Hit"
-            frames.remove(req)
-            frames.append(req)
-        else:
-            status = "Fault"
-            faults += 1
-            if len(frames) < num_frames:
-                frames.append(req)
-            else:
-                frames.pop(-1)
-                frames.append(req)
-                
-        state = frames + [None] * (num_frames - len(frames))
-        snapshots.append({'state': state, 'status': status})
-        
-    print_result(ref_string, snapshots, faults, len(ref_string))
-
-
-def simulate_optimal(ref_string, num_frames):
-    frames = []
-    faults = 0
-    snapshots = []
-    
-    total_len = len(ref_string)
-    
-    for idx, req in enumerate(ref_string):
-        status = ""
-        if req in frames:
-            status = "Hit"
-        else:
-            status = "Fault"
-            faults += 1
-            if len(frames) < num_frames:
-                frames.append(req)
-            else:
-                # Find page to replace
-                farthest_idx = -1
-                replace_candidate = -1
-                for frame in frames:
-                    try:
-                        # Find the first occurrence of `frame` from `idx+1` to end of string
-                        next_use = ref_string[idx+1:].index(frame) + idx + 1
-                    except ValueError:
-                        # Never used again
-                        next_use = float('inf')
-                    
-                    if next_use > farthest_idx:
-                        farthest_idx = next_use
-                        replace_candidate = frame
-                
-                frames[frames.index(replace_candidate)] = req
-                
-        state = frames + [None] * (num_frames - len(frames))
-        snapshots.append({'state': state, 'status': status})
-        
-    print_result(ref_string, snapshots, faults, len(ref_string))
-
-
-def simulate_second_chance(ref_string, num_frames):
-    frames = []  # stores pages
-    ref_bits = {} # maps page to ref bit
+    memory = [None] * num_frames
     pointer = 0
     faults = 0
     snapshots = []
     
     for req in ref_string:
         status = ""
-        if req in frames:
+        if req in memory:
             status = "Hit"
-            ref_bits[req] = 1
         else:
             status = "Fault"
             faults += 1
-            if len(frames) < num_frames:
-                frames.append(req)
-                ref_bits[req] = 0
+            memory[pointer] = req
+            pointer = (pointer + 1) % num_frames
+        
+        snapshots.append({'state': list(memory), 'status': status})
+        
+    return faults, snapshots
+
+def simulate_lru(ref_string, num_frames):
+    memory = [None] * num_frames
+    last_used = [0] * num_frames
+    time = 0
+    faults = 0
+    snapshots = []
+    
+    for req in ref_string:
+        time += 1
+        status = ""
+        if req in memory:
+            status = "Hit"
+            idx = memory.index(req)
+            last_used[idx] = time
+        else:
+            status = "Fault"
+            faults += 1
+            if None in memory:
+                idx = memory.index(None)
+            else:
+                idx = last_used.index(min(last_used))
+            memory[idx] = req
+            last_used[idx] = time
+            
+        snapshots.append({'state': list(memory), 'status': status})
+        
+    return faults, snapshots
+
+def simulate_mru(ref_string, num_frames):
+    memory = [None] * num_frames
+    last_used = [0] * num_frames
+    time = 0
+    faults = 0
+    snapshots = []
+    
+    for req in ref_string:
+        time += 1
+        status = ""
+        if req in memory:
+            status = "Hit"
+            idx = memory.index(req)
+            last_used[idx] = time
+        else:
+            status = "Fault"
+            faults += 1
+            if None in memory:
+                idx = memory.index(None)
+            else:
+                idx = last_used.index(max(last_used))
+            memory[idx] = req
+            last_used[idx] = time
+            
+        snapshots.append({'state': list(memory), 'status': status})
+        
+    return faults, snapshots
+
+def simulate_optimal(ref_string, num_frames):
+    memory = [None] * num_frames
+    faults = 0
+    snapshots = []
+    
+    for idx, req in enumerate(ref_string):
+        status = ""
+        if req in memory:
+            status = "Hit"
+        else:
+            status = "Fault"
+            faults += 1
+            if None in memory:
+                mem_idx = memory.index(None)
+            else:
+                farthest_time = -1
+                mem_idx = -1
+                for m_i, frame in enumerate(memory):
+                    try:
+                        next_use = ref_string[idx+1:].index(frame) + idx + 1
+                    except ValueError:
+                        next_use = float('inf')
+                    
+                    if next_use > farthest_time:
+                        farthest_time = next_use
+                        mem_idx = m_i
+                
+            memory[mem_idx] = req
+                
+        snapshots.append({'state': list(memory), 'status': status})
+        
+    return faults, snapshots
+
+def simulate_second_chance(ref_string, num_frames):
+    memory = [None] * num_frames
+    ref_bits = [0] * num_frames
+    pointer = 0
+    faults = 0
+    snapshots = []
+    
+    for req in ref_string:
+        status = ""
+        if req in memory:
+            status = "Hit"
+            idx = memory.index(req)
+            ref_bits[idx] = 1
+        else:
+            status = "Fault"
+            faults += 1
+            if None in memory:
+                idx = memory.index(None)
+                memory[idx] = req
+                ref_bits[idx] = 0
             else:
                 while True:
-                    candidate = frames[pointer]
-                    if ref_bits[candidate] == 1:
-                        ref_bits[candidate] = 0
+                    if ref_bits[pointer] == 1:
+                        ref_bits[pointer] = 0
                         pointer = (pointer + 1) % num_frames
                     else:
-                        # replace this candidate
-                        frames[pointer] = req
-                        ref_bits[req] = 0
+                        memory[pointer] = req
+                        ref_bits[pointer] = 0
                         pointer = (pointer + 1) % num_frames
                         break
                         
-        state = frames + [None] * (num_frames - len(frames))
-        snapshots.append({'state': state, 'status': status})
+        snapshots.append({'state': list(memory), 'status': status})
         
-    print_result(ref_string, snapshots, faults, len(ref_string))
-
+    return faults, snapshots
 
 def parse_reference_string(raw_str):
-    # Determine the separator (comma or space)
     raw_str = raw_str.replace(",", " ")
     parts = raw_str.split()
     try:
         return [int(p) for p in parts]
     except ValueError:
-        print("Error: Reference string must contain only integers.")
         return []
 
+def run_simulation(name, func, ref_string, num_frames):
+    clear_screen()
+    faults, snapshots = func(ref_string, num_frames)
+    print_result(name, ref_string, snapshots, faults, len(ref_string), num_frames)
+
 def main():
-    print("===========================================")
-    print("   Paged Replacement Algorithm Simulator")
-    print("===========================================")
+    if os.name == 'nt':
+        os.system('color') # Enable ANSI escape characters in Windows CMD
+        
+    num_frames = 0
+    ref_string = []
     
     while True:
-        try:
-            num_frames = int(input("\nEnter the number of frames: "))
-            if num_frames <= 0:
-                print("Number of frames must be greater than 0.")
-                continue
-            break
-        except ValueError:
-            print("Please enter a valid integer.")
-            
-    while True:
-        raw_str = input("Enter the page reference string (e.g., '7,0,1,2,0' or '7 0 1 2 0'): ")
-        ref_string = parse_reference_string(raw_str)
-        if len(ref_string) > 0:
-            break
-            
-    while True:
-        print("\nAlgorithms Menu:")
-        print("1. FIFO (First In First Out)")
-        print("2. LRU (Least Recently Used)")
-        print("3. MRU (Most Recently Used)")
-        print("4. OPTIMAL")
-        print("5. SECOND CHANCE")
-        print("6. Change Reference String or Frames")
-        print("7. Exit")
+        clear_screen()
+        print(f"{Colors.HEADER}{Colors.BOLD}╔══════════════════════════════════════════════════════════╗{Colors.ENDC}")
+        print(f"{Colors.HEADER}{Colors.BOLD}║          PAGED REPLACEMENT ALGORITHM SIMULATOR           ║{Colors.ENDC}")
+        print(f"{Colors.HEADER}{Colors.BOLD}╚══════════════════════════════════════════════════════════╝{Colors.ENDC}\n")
         
-        choice = input("\nSelect an option: ")
+        # Setup inputs if needed
+        if num_frames == 0 or len(ref_string) == 0:
+            print(f"{Colors.BLUE}{Colors.BOLD}--- Initial Setup ---{Colors.ENDC}")
+            while True:
+                try:
+                    num_frames = int(input("Enter the number of memory frames: "))
+                    if num_frames <= 0:
+                        print(f"{Colors.FAIL}Frames must be > 0.{Colors.ENDC}")
+                        continue
+                    break
+                except ValueError:
+                    print(f"{Colors.FAIL}Invalid input. Please enter a number.{Colors.ENDC}")
+                    
+            while True:
+                raw_str = input("Enter reference string (e.g., '7,0,1,2,0' or '7 0 1'): ")
+                ref_string = parse_reference_string(raw_str)
+                if len(ref_string) > 0:
+                    break
+                print(f"{Colors.FAIL}Invalid string. Must contain integers.{Colors.ENDC}")
+            continue
+
+        # Display current parameters
+        print(f" {Colors.BOLD}Current Settings:{Colors.ENDC}")
+        print(f" • Frames: {Colors.GREEN}{num_frames}{Colors.ENDC}")
+        print(f" • String: {Colors.WARNING}{', '.join(map(str, ref_string))}{Colors.ENDC}")
+        print(f" • Length: {len(ref_string)} Requests\n")
+
+        # Main Menu
+        print(f"{Colors.BOLD}Select an Algorithm to Simulate:{Colors.ENDC}")
+        print(f"  {Colors.BLUE}1.{Colors.ENDC} FIFO (First In First Out)")
+        print(f"  {Colors.BLUE}2.{Colors.ENDC} LRU (Least Recently Used)")
+        print(f"  {Colors.BLUE}3.{Colors.ENDC} MRU (Most Recently Used)")
+        print(f"  {Colors.BLUE}4.{Colors.ENDC} OPTIMAL")
+        print(f"  {Colors.BLUE}5.{Colors.ENDC} SECOND CHANCE (Clock)")
+        print("  ─" * 20)
+        print(f"  {Colors.WARNING}6.{Colors.ENDC} Run ALL Algorithms (Summary)")
+        print(f"  {Colors.WARNING}7.{Colors.ENDC} Change Reference String or Frames")
+        print(f"  {Colors.FAIL}8.{Colors.ENDC} Exit\n")
+        
+        choice = input(f"Enter choice {Colors.BLUE}[1-8]{Colors.ENDC}: ")
         
         if choice == '1':
-            print("\n--- FIFO Simulation ---")
-            simulate_fifo(ref_string, num_frames)
+            run_simulation("FIFO", simulate_fifo, ref_string, num_frames)
         elif choice == '2':
-            print("\n--- LRU Simulation ---")
-            simulate_lru(ref_string, num_frames)
+            run_simulation("LRU", simulate_lru, ref_string, num_frames)
         elif choice == '3':
-            print("\n--- MRU Simulation ---")
-            simulate_mru(ref_string, num_frames)
+            run_simulation("MRU", simulate_mru, ref_string, num_frames)
         elif choice == '4':
-            print("\n--- OPTIMAL Simulation ---")
-            simulate_optimal(ref_string, num_frames)
+            run_simulation("OPTIMAL", simulate_optimal, ref_string, num_frames)
         elif choice == '5':
-            print("\n--- SECOND CHANCE Simulation ---")
-            simulate_second_chance(ref_string, num_frames)
+            run_simulation("SECOND CHANCE", simulate_second_chance, ref_string, num_frames)
         elif choice == '6':
-            main() # restart
-            return
+            clear_screen()
+            print(f"\n{Colors.BOLD}{Colors.WARNING}╔════════════════════════════════════════════════════════╗{Colors.ENDC}")
+            print(f"{Colors.BOLD}{Colors.WARNING}║                 ALL ALGORITHMS SUMMARY                 ║{Colors.ENDC}")
+            print(f"{Colors.BOLD}{Colors.WARNING}╚════════════════════════════════════════════════════════╝{Colors.ENDC}\n")
+            
+            algos = [
+                ("FIFO", simulate_fifo),
+                ("LRU", simulate_lru),
+                ("MRU", simulate_mru),
+                ("OPTIMAL", simulate_optimal),
+                ("SECOND CHANCE", simulate_second_chance)
+            ]
+            
+            print(f"{Colors.BOLD}┌──────────────────┬──────────────┬─────────────┬────────┐{Colors.ENDC}")
+            print(f"{Colors.BOLD}│ Algorithm        │ Faults (Bad) │ Hits (Good) │ Rate   │{Colors.ENDC}")
+            print(f"{Colors.BOLD}├──────────────────┼──────────────┼─────────────┼────────┤{Colors.ENDC}")
+            
+            for alg_name, alg_func in algos:
+                faults, _ = alg_func(ref_string, num_frames)
+                hits = len(ref_string) - faults
+                rate = f"{(hits / len(ref_string) * 100):.1f}%"
+                print(f"│ {alg_name:<16} │ {Colors.FAIL}{faults:<12}{Colors.ENDC} │ {Colors.GREEN}{hits:<11}{Colors.ENDC} │ {Colors.BLUE}{rate:<6}{Colors.ENDC} │")
+            
+            print(f"{Colors.BOLD}└──────────────────┴──────────────┴─────────────┴────────┘{Colors.ENDC}\n")
+            input(f"{Colors.WARNING}Press [Enter] to return to the menu...{Colors.ENDC}")
+            
         elif choice == '7':
-            print("Exiting simulator. Goodbye!")
+            num_frames = 0
+            ref_string = []
+        elif choice == '8':
+            clear_screen()
+            print(f"{Colors.GREEN}Exiting simulator. Goodbye!{Colors.ENDC}")
             sys.exit(0)
-        else:
-            print("Invalid choice, please select from 1-7.")
 
 if __name__ == "__main__":
     main()

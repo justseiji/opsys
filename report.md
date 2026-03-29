@@ -1,7 +1,7 @@
 # Paged Replacement Algorithms Project Report
 
 ## Introduction
-This report documents the implementation and simulation of five paged replacement algorithms: FIFO, LRU, MRU, OPTIMAL, and SECOND CHANCE. It includes sample outputs showing the memory states, failure/success rates, and a real-world operating system analysis for each algorithm.
+This report documents the implementation and simulation of five paged replacement algorithms: FIFO, LRU, MRU, OPTIMAL, and SECOND CHANCE. It includes sample outputs showing the memory states, failure/success rates, step-by-step manual computations, and a real-world operating system analysis for each algorithm.
 
 ---
 
@@ -41,37 +41,47 @@ This report documents the implementation and simulation of five paged replacemen
 
 ## Sample Outputs & Manual Computations
 
-> **Note:** Generate and paste the screenshots of your CLI output here as required by the grading prompt. Ensure each algorithm has at least 2 screenshots showing different inputs (e.g., different frame counts or reference strings).
+> **Instructions:** Run `page_replacement.py` and capture screenshots for both the standard simulator output and the "Textbook Manual Calculation Grid". Repeat this with at least two different inputs (e.g. changing the number of frames or string length) for each algorithm below.
 
 ### FIFO Output
+**CLI Output Simulation:**
 *(Insert Screenshot 1 Here)*
 *(Insert Screenshot 2 Here)*
+
 **Manual Computation Verification:**
-*(Add step-by-step table or reference calculations here)*
+*(Insert Screenshot of the Textbook Manual Calculation Grid)*
 
 ### LRU Output
+**CLI Output Simulation:**
 *(Insert Screenshot 1 Here)*
 *(Insert Screenshot 2 Here)*
+
 **Manual Computation Verification:**
-*(Add step-by-step table or reference calculations here)*
+*(Insert Screenshot of the Textbook Manual Calculation Grid)*
 
 ### MRU Output
+**CLI Output Simulation:**
 *(Insert Screenshot 1 Here)*
 *(Insert Screenshot 2 Here)*
+
 **Manual Computation Verification:**
-*(Add step-by-step table or reference calculations here)*
+*(Insert Screenshot of the Textbook Manual Calculation Grid)*
 
 ### OPTIMAL Output
+**CLI Output Simulation:**
 *(Insert Screenshot 1 Here)*
 *(Insert Screenshot 2 Here)*
+
 **Manual Computation Verification:**
-*(Add step-by-step table or reference calculations here)*
+*(Insert Screenshot of the Textbook Manual Calculation Grid)*
 
 ### SECOND CHANCE Output
+**CLI Output Simulation:**
 *(Insert Screenshot 1 Here)*
 *(Insert Screenshot 2 Here)*
+
 **Manual Computation Verification:**
-*(Add step-by-step table or reference calculations here)*
+*(Insert Screenshot of the Textbook Manual Calculation Grid)*
 
 ---
 
